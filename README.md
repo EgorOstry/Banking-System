@@ -12,4 +12,5 @@ Code - banking.py;
 Database - card.s3db;
 Diagram - BANK SYSTEM DIAGRAM.png;
 
+Download ZIP, then unzip it and launch banking.py file.
 Please see diagram attached.
