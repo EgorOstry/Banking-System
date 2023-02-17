@@ -28,11 +28,12 @@ transfer_card_check_return: list[str] = ['You can\'t transfer money to the same 
                                          'Probably you made a mistake in the card number. Please try again!',
                                          'Such a card does not exist.']
 
+
 # creates a class
 class BankingSystem:
     def __init__(self):
         self.cards = {}
-    
+
     # main menu to choose an action - see options on the print line
     def menu(self):
         while True:
@@ -47,8 +48,8 @@ class BankingSystem:
                 exit()
             else:
                 print('Unknown option.')
-    
-    # The method to check if a new card number passes Luhn algoritm. calls from generate_numbers method.
+
+    # The method to check if a new card number passes Luhn algorithm. calls from generate_numbers method.
     @staticmethod
     def luhn(iin, acc_id):
         card_num = [int(x) for x in list(iin + acc_id)]
@@ -60,8 +61,9 @@ class BankingSystem:
             return str(0)
         else:
             return str(10 - sum(card_num) % 10)
-          
-    # The method to check if a card number we trying to transfer money to passes Luhn algoritm. calls from transfer_card_check method.
+
+    # The method to check if a card number we are trying to transfer money to passes Luhn algorithm.
+    # Calls from transfer_card_check.
     @staticmethod
     def luhn_check(number):
         card_num = [int(x) for x in list(number)]
@@ -74,7 +76,7 @@ class BankingSystem:
             return True
         else:
             return False
-          
+
     # The method to generate new card number. calls from create_account method.
     @staticmethod
     def generate_numbers(self):
@@ -86,7 +88,7 @@ class BankingSystem:
             random_card = iin + acc_id + checksum
             yield random_card, random_pin
 
-    # The method to create account. calls from menu        
+    # The method to create account. calls from menu
     def create_account(self):
         card, pin = next(self.generate_numbers(self))
         self.insert_card(card, pin)
@@ -108,7 +110,7 @@ class BankingSystem:
                 print('Wrong card number or PIN\n')
         else:
             print('Wrong card number or PIN\n')
-    
+
     # The method to choose an option once you logged in. calls from login method.
     def account(self, card):
         while True:
@@ -132,10 +134,14 @@ class BankingSystem:
                     if money > self.select_balance(card):
                         print('Not enough money!\n')
                     else:
-                        self.outcome(card, money)
-                        self.add_income(card_to_transfer, money)
-                        print('Success!\n')
-
+                        try:
+                            self.transfer_out(card, money)
+                            self.transfer_in(card_to_transfer, money)
+                            print('Success!\n')
+                            conn.commit()
+                        except:
+                            conn.rollback()
+                            print('An error occurred during the transaction. Please try again later.\n')
             elif choice == '4':
                 self.delete_account(card)
                 print('The account has been closed!\n')
@@ -148,14 +154,15 @@ class BankingSystem:
                 exit()
             else:
                 print('Unknown option.\n')
-    
+
     # The method to add a new card to the database. calls from create_account
     @staticmethod
     def insert_card(card, pin):
         cur.execute(insert_card, (card, pin))
         conn.commit()
-    
-    # The method to select a number from the database. It returns 0 if such a number doesn't exist to report it further. calls from transfer_card_check
+
+    # The method to select a number from the database.
+    # It returns 0 if such a number doesn't exist to report it further. calls from transfer_card_check.
     @staticmethod
     def select_number(number):
         cur.execute(select_number, (number,))
@@ -164,40 +171,46 @@ class BankingSystem:
             return cur.fetchone()[0]
         except TypeError:
             return 0
-    
-    # The method to select a particular pin-code from the database to check if it matches with an account number. calls from login
+
+    # The method to select a particular pin-code from the database to check if it matches with an account number.
+    # Calls from login.
     @staticmethod
     def select_pin(number):
         cur.execute(select_pin, (number,))
         conn.commit()
         return cur.fetchone()[0]
-    
+
     # The method to select a card balance. calls from account
     @staticmethod
     def select_balance(number):
         cur.execute(select_balance, (number,))
         conn.commit()
         return cur.fetchone()[0]
-    
+
     # The method to add money(income) to the card balance(number) in the DB. calls from account.
     @staticmethod
     def add_income(number, income):
         cur.execute(add_income, (income, number))
         conn.commit()
-    
-    # The method to substract money(outcome) from the card balance(number) in the DB. calls from account.
+
+    # The method to add money(income) to the card balance(number) during transfer procedure in the DB.
+    # Calls from account(transfer section).
     @staticmethod
-    def outcome(number, outcome):
+    def transfer_in(number, income):
+        cur.execute(add_income, (income, number))
+
+    # The method to subtract money(outcome) from the card balance(number) in the DB.
+    # Calls from account(transfer section).
+    @staticmethod
+    def transfer_out(number, outcome):
         cur.execute(outcome_balance, (outcome, number))
-        conn.commit()
-        
-        
+
     # The method to delete the account from the DB. calls from account.
     @staticmethod
     def delete_account(number):
         cur.execute(close_account, (number,))
         conn.commit()
-    
+
     # The method to check if it's possible to make a transfer. calls from account
     @staticmethod
     def transfer_card_check(self, card_to_transfer, account):
